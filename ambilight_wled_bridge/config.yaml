@@ -1,0 +1,56 @@
+name: "Ambilight WLED Bridge"
+version: "0.1.0"
+slug: "ambilight_wled_bridge"
+description: "Philips Titan OS Ambilight to WLED realtime bridge"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+startup: application
+boot: manual
+init: false
+host_network: true
+stdin: true
+stage: experimental
+options:
+  mode: "bridge"
+  tv_host: null
+  tv_username: null
+  tv_password: null
+  wled_host: null
+  normal_preset_id: 1
+  ambilight_preset_id: 2
+  output_backend: "ddp_pixels"
+  ddp_host: ""
+  ddp_port: 4048
+  ddp_pixel_count: 86
+  philips_poll_interval_ms: 50
+  wled_render_interval_ms: 33
+  smoothing_enabled: true
+  smoothing_time_constant_ms: 120
+  max_brightness: 255
+  restore_normal_on_exit: true
+  restore_normal_after_tv_loss_seconds: 30
+  timing_log_interval_seconds: 5
+  log_level: "info"
+schema:
+  mode: "list(bridge|pair)"
+  tv_host: str
+  tv_username: "str?"
+  tv_password: "password?"
+  wled_host: str
+  normal_preset_id: "int(1,)"
+  ambilight_preset_id: "int(1,)"
+  output_backend: "list(ddp_pixels|json_segments)"
+  ddp_host: "str?"
+  ddp_port: port
+  ddp_pixel_count: "int(86,86)"
+  philips_poll_interval_ms: "int(1,)"
+  wled_render_interval_ms: "int(1,)"
+  smoothing_enabled: bool
+  smoothing_time_constant_ms: "float(0,)"
+  max_brightness: "int(0,255)"
+  restore_normal_on_exit: bool
+  restore_normal_after_tv_loss_seconds: "float(0,)"
+  timing_log_interval_seconds: "float(0,)"
+  log_level: "list(warning|info|debug|trace)"
