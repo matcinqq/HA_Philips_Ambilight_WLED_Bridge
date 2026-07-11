@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,7 @@ def build_bridge_config(options: dict[str, Any]) -> dict[str, Any]:
             "pixel_count": int(options.get("ddp_pixel_count", 86)),
         },
         "bridge": {
+            "brightness_multiplier": float(options.get("brightness_multiplier", 1.0)),
             "max_brightness": int(options.get("max_brightness", 255)),
             "restore_normal_on_exit": bool(options.get("restore_normal_on_exit", True)),
             "restore_normal_after_tv_loss_seconds": float(options.get("restore_normal_after_tv_loss_seconds", 30)),
@@ -189,6 +191,8 @@ def request_pairing(tv_host: str, state_path: Path) -> None:
                 "tv_host": tv_host,
                 "device_id": pairer.device_id,
                 "pair_response": pair_response,
+                "created_at": time.time(),
+                "timeout": pair_response.get("timeout"),
             }
         ),
         encoding="utf-8",
@@ -219,21 +223,32 @@ def complete_pairing(tv_host: str, pin: str, state_path: Path) -> None:
         raise SystemExit("Pending pairing state is for a different TV host. Clear pair_pin and start pairing again.")
     if not isinstance(pair_response, dict) or not isinstance(device_id, str) or not device_id:
         raise SystemExit("Pending pairing state is incomplete. Clear pair_pin and start pairing again.")
+    if pair_state_expired(state):
+        clear_pair_state(state_path)
+        raise SystemExit(
+            "The pending TV pairing PIN window has expired. Clear pair_pin, start the add-on once to request "
+            "a fresh PIN, then enter the new PIN and start it again."
+        )
 
     pairer = PhilipsTVPairer(tv_host, device_id=device_id)
-    credentials = pairer.grant_pairing(
-        pin,
-        pair_response,
-        device_name=PAIR_DEVICE_NAME,
-        device_os=PAIR_DEVICE_OS,
-        app_name=PAIR_APP_NAME,
-        app_id=PAIR_APP_ID,
-    )
-    pairer.test_credentials(credentials)
     try:
-        state_path.unlink()
-    except FileNotFoundError:
-        pass
+        credentials = pairer.grant_pairing(
+            pin,
+            pair_response,
+            device_name=PAIR_DEVICE_NAME,
+            device_os=PAIR_DEVICE_OS,
+            app_name=PAIR_APP_NAME,
+            app_id=PAIR_APP_ID,
+        )
+        pairer.test_credentials(credentials)
+    except BridgeError as exc:
+        clear_pair_state(state_path)
+        raise SystemExit(
+            "Pairing grant failed. The PIN was probably wrong or the TV pairing window expired. "
+            "Clear pair_pin, start the add-on once to request a fresh PIN, then enter the new PIN and start it again. "
+            f"Original error: {exc}"
+        ) from exc
+    clear_pair_state(state_path)
 
     print("Credential test against ambilight/topology succeeded.", flush=True)
     print("\nPairing successful.", flush=True)
@@ -241,6 +256,23 @@ def complete_pairing(tv_host: str, pin: str, state_path: Path) -> None:
     print(f"tv_username: {credentials.username}", flush=True)
     print(f"tv_password: {credentials.password}", flush=True)
     print("Then set mode to bridge and clear pair_pin.", flush=True)
+
+
+def pair_state_expired(state: dict[str, Any], *, now: float | None = None) -> bool:
+    created_at = state.get("created_at")
+    timeout = state.get("timeout")
+    if isinstance(created_at, bool) or isinstance(timeout, bool):
+        return False
+    if not isinstance(created_at, (int, float)) or not isinstance(timeout, (int, float)):
+        return False
+    return (now if now is not None else time.time()) - float(created_at) >= float(timeout)
+
+
+def clear_pair_state(state_path: Path) -> None:
+    try:
+        state_path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def log_option_presence(options: dict[str, Any]) -> None:
