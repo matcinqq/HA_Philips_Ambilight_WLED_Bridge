@@ -14,10 +14,10 @@ stdin: true
 stage: experimental
 options:
   mode: "bridge"
-  tv_host: null
-  tv_username: null
-  tv_password: null
-  wled_host: null
+  tv_host: ""
+  tv_username: ""
+  tv_password: ""
+  wled_host: ""
   normal_preset_id: 1
   ambilight_preset_id: 2
   output_backend: "ddp_pixels"
@@ -38,7 +38,7 @@ schema:
   tv_host: str
   tv_username: "str?"
   tv_password: "password?"
-  wled_host: str
+  wled_host: "str?"
   normal_preset_id: "int(1,)"
   ambilight_preset_id: "int(1,)"
   output_backend: "list(ddp_pixels|json_segments)"

@@ -15,11 +15,13 @@ To pair from this app:
 
 1. Set `mode` to `pair`.
 2. Set `tv_host`.
-3. Start the app.
-4. Enter the PIN shown on the TV when prompted in the add-on terminal/stdin.
-5. Copy the printed `tv_username` and `tv_password` into the app options.
-6. Set `mode` back to `bridge`.
-7. Start the app normally.
+3. Leave `tv_username`, `tv_password`, and `wled_host` blank while pairing.
+4. Start the app.
+5. Enter the PIN shown on the TV when prompted in the add-on terminal/stdin.
+6. Copy the printed `tv_username` and `tv_password` into the app options.
+7. Set `mode` back to `bridge`.
+8. Set `wled_host`.
+9. Start the app normally.
 
 Changing the TV IP does not necessarily require re-pairing. If the generated username/password still work, only update `tv_host`.
 
