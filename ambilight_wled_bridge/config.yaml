@@ -1,5 +1,5 @@
 name: "Ambilight WLED Bridge"
-version: "0.1.0"
+version: "0.1.2"
 slug: "ambilight_wled_bridge"
 description: "Philips Titan OS Ambilight to WLED realtime bridge"
 arch:

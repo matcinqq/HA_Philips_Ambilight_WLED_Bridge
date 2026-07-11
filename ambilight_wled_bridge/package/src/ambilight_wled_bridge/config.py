@@ -155,7 +155,7 @@ class AppConfig:
     mapping: MappingConfig = field(default_factory=MappingConfig)
     segment_ids: SegmentIds = field(default_factory=SegmentIds)
 
-    def validate(self, require_tv_credentials: bool = True) -> None:
+    def validate(self, require_tv_credentials: bool = True, require_wled: bool = True) -> None:
         if require_tv_credentials:
             if not self.tv.host:
                 raise ConfigError("tv.host is required")
@@ -168,7 +168,7 @@ class AppConfig:
             if not self.tv.username or not self.tv.password:
                 raise ConfigError("Philips TV username/password are required")
 
-        if not self.wled.host:
+        if require_wled and not self.wled.host:
             raise ConfigError("wled.host is required")
         if self.wled.timeout_seconds <= 0:
             raise ConfigError("wled.timeout_seconds must be positive")
@@ -256,7 +256,7 @@ class AppConfig:
             raise ConfigError("ddp.port must be in the range 1..65535")
         if isinstance(self.ddp.pixel_count, bool) or not isinstance(self.ddp.pixel_count, int) or self.ddp.pixel_count <= 0:
             raise ConfigError("ddp.pixel_count must be positive")
-        if self.output.backend == "ddp_pixels":
+        if require_wled and self.output.backend == "ddp_pixels":
             if not (self.ddp.host or self.wled.host):
                 raise ConfigError("ddp.host or wled.host is required when output.backend is 'ddp_pixels'")
             if self.ddp.pixel_count != 86:

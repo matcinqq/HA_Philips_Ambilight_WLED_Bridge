@@ -557,7 +557,9 @@ def _load_config_from_args(args: argparse.Namespace) -> AppConfig:
 
     if args.command in {"check", "once", "debug-frame", "debug-timing", "debug-ddp-pixels", "raw-passthrough", "run"}:
         config.validate(require_tv_credentials=True)
-    elif args.command in {"pair", "backend-info", "test-ddp", "restore-normal"}:
+    elif args.command == "pair":
+        config.validate(require_tv_credentials=False, require_wled=False)
+    elif args.command in {"backend-info", "test-ddp", "restore-normal"}:
         config.validate(require_tv_credentials=False)
     else:
         raise ConfigError(f"Unknown command: {args.command}")
