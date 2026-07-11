@@ -1,5 +1,5 @@
 name: "Ambilight WLED Bridge"
-version: "0.1.7"
+version: "0.1.8"
 slug: "ambilight_wled_bridge"
 description: "Philips Titan OS Ambilight to WLED realtime bridge"
 arch:
@@ -29,11 +29,6 @@ options:
   wled_render_interval_ms: 33
   smoothing_enabled: true
   smoothing_time_constant_ms: 120
-  brightness_multiplier: 1.0
-  red_gain: 1.0
-  green_gain: 1.0
-  blue_gain: 1.0
-  saturation: 1.0
   max_brightness: 255
   restore_normal_on_exit: true
   restore_normal_after_tv_loss_seconds: 30
@@ -56,11 +51,6 @@ schema:
   wled_render_interval_ms: "int(1,)"
   smoothing_enabled: bool
   smoothing_time_constant_ms: "float(0,)"
-  brightness_multiplier: "float(0,)"
-  red_gain: "float(0,)"
-  green_gain: "float(0,)"
-  blue_gain: "float(0,)"
-  saturation: "float(0,2)"
   max_brightness: "int(0,255)"
   restore_normal_on_exit: bool
   restore_normal_after_tv_loss_seconds: "float(0,)"

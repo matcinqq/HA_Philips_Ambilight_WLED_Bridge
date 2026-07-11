@@ -73,11 +73,6 @@ def build_bridge_config(options: dict[str, Any]) -> dict[str, Any]:
             "pixel_count": int(options.get("ddp_pixel_count", 86)),
         },
         "bridge": {
-            "brightness_multiplier": float(options.get("brightness_multiplier", 1.0)),
-            "red_gain": float(options.get("red_gain", 1.0)),
-            "green_gain": float(options.get("green_gain", 1.0)),
-            "blue_gain": float(options.get("blue_gain", 1.0)),
-            "saturation": float(options.get("saturation", 1.0)),
             "max_brightness": int(options.get("max_brightness", 255)),
             "restore_normal_on_exit": bool(options.get("restore_normal_on_exit", True)),
             "restore_normal_after_tv_loss_seconds": float(options.get("restore_normal_after_tv_loss_seconds", 30)),

@@ -45,18 +45,11 @@ The generated config is stored at `/data/bridge-config.yaml` inside the app cont
 - `philips_poll_interval_ms`: `50`
 - `wled_render_interval_ms`: `33`
 - `smoothing_time_constant_ms`: `120`
-- `brightness_multiplier`: `1.0`
-- `red_gain`: `1.0`
-- `green_gain`: `1.0`
-- `blue_gain`: `1.0`
-- `saturation`: `1.0`
 - `max_brightness`: `255`
 - normal preset: `1`
 - Ambilight preset: `2`
 
-Use `brightness_multiplier` for normal dimming. Use `max_brightness` only as a hard per-channel ceiling.
-
-If red looks too vivid compared with the TV's Ambilight, start with `red_gain: 0.75` to `0.85`. If all colors look too punchy, try `saturation: 0.8` to `0.9`.
+Use `max_brightness` only as a hard per-channel ceiling.
 
 Use `json_segments` as `output_backend` if DDP behaves unexpectedly and you need the previous JSON live-frame behavior.
 
