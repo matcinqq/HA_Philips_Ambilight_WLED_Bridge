@@ -1,5 +1,5 @@
 name: "Ambilight WLED Bridge"
-version: "0.1.3"
+version: "0.1.4"
 slug: "ambilight_wled_bridge"
 description: "Philips Titan OS Ambilight to WLED realtime bridge"
 arch:
@@ -17,6 +17,7 @@ options:
   tv_host: ""
   tv_username: ""
   tv_password: ""
+  pair_pin: ""
   wled_host: ""
   normal_preset_id: 1
   ambilight_preset_id: 2
@@ -38,6 +39,7 @@ schema:
   tv_host: str
   tv_username: "str?"
   tv_password: "password?"
+  pair_pin: "str?"
   wled_host: "str?"
   normal_preset_id: "int(1,)"
   ambilight_preset_id: "int(1,)"

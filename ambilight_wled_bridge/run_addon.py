@@ -7,8 +7,17 @@ from typing import Any
 
 import yaml
 
+from ambilight_wled_bridge.models import BridgeError
+from ambilight_wled_bridge.pairing import PhilipsTVPairer
+
 OPTIONS_PATH = Path("/data/options.json")
 BRIDGE_CONFIG_PATH = Path("/data/bridge-config.yaml")
+PAIR_STATE_PATH = Path("/data/pair-state.json")
+
+PAIR_DEVICE_NAME = "Home Assistant"
+PAIR_DEVICE_OS = "Home Assistant OS"
+PAIR_APP_NAME = "Ambilight WLED Bridge"
+PAIR_APP_ID = "ambilight.wled.bridge"
 
 
 def main() -> None:
@@ -16,7 +25,8 @@ def main() -> None:
     mode = str(options.get("mode", "bridge"))
     log_option_presence(options)
     if mode == "pair":
-        os.execvp("python3", build_pair_argv(options))
+        run_pair_mode(options, PAIR_STATE_PATH)
+        return
 
     config = build_bridge_config(options)
     log_bridge_config_presence(config)
@@ -148,6 +158,91 @@ def build_pair_argv(options: dict[str, Any]) -> list[str]:
     return argv
 
 
+def run_pair_mode(options: dict[str, Any], state_path: Path) -> None:
+    tv_host = required(options, "tv_host")
+    pin = optional_text(options.get("pair_pin"))
+
+    try:
+        if pin:
+            complete_pairing(tv_host, pin, state_path)
+        else:
+            request_pairing(tv_host, state_path)
+    except BridgeError as exc:
+        raise SystemExit(str(exc)) from exc
+
+
+def request_pairing(tv_host: str, state_path: Path) -> None:
+    pairer = PhilipsTVPairer(tv_host)
+    print(f"Requesting a pairing PIN from Philips TV at {tv_host}...", flush=True)
+    pair_response = pairer.request_pairing(
+        device_name=PAIR_DEVICE_NAME,
+        device_os=PAIR_DEVICE_OS,
+        app_name=PAIR_APP_NAME,
+        app_id=PAIR_APP_ID,
+    )
+    if pair_response.get("error_id") == "CONCURRENT_PAIRING":
+        raise SystemExit("The TV reports another pairing is in progress. Wait about 60 seconds and try again.")
+
+    state_path.write_text(
+        json.dumps(
+            {
+                "tv_host": tv_host,
+                "device_id": pairer.device_id,
+                "pair_response": pair_response,
+            }
+        ),
+        encoding="utf-8",
+    )
+    timeout = pair_response.get("timeout")
+    timeout_text = f" within {timeout} seconds" if timeout else ""
+    print("The TV should now show a pairing PIN.", flush=True)
+    print(
+        f"Put that PIN into the add-on option pair_pin and start the add-on again{timeout_text}.",
+        flush=True,
+    )
+
+
+def complete_pairing(tv_host: str, pin: str, state_path: Path) -> None:
+    if not state_path.exists():
+        raise SystemExit(
+            "No pending pairing request was found. Clear pair_pin, start the add-on once to request a PIN, "
+            "then enter the new PIN and start it again."
+        )
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    if not isinstance(state, dict):
+        raise SystemExit("Pending pairing state is malformed. Clear pair_pin and start pairing again.")
+
+    pair_response = state.get("pair_response")
+    device_id = state.get("device_id")
+    state_tv_host = state.get("tv_host")
+    if state_tv_host != tv_host:
+        raise SystemExit("Pending pairing state is for a different TV host. Clear pair_pin and start pairing again.")
+    if not isinstance(pair_response, dict) or not isinstance(device_id, str) or not device_id:
+        raise SystemExit("Pending pairing state is incomplete. Clear pair_pin and start pairing again.")
+
+    pairer = PhilipsTVPairer(tv_host, device_id=device_id)
+    credentials = pairer.grant_pairing(
+        pin,
+        pair_response,
+        device_name=PAIR_DEVICE_NAME,
+        device_os=PAIR_DEVICE_OS,
+        app_name=PAIR_APP_NAME,
+        app_id=PAIR_APP_ID,
+    )
+    pairer.test_credentials(credentials)
+    try:
+        state_path.unlink()
+    except FileNotFoundError:
+        pass
+
+    print("Credential test against ambilight/topology succeeded.", flush=True)
+    print("\nPairing successful.", flush=True)
+    print("Copy these values into the add-on options:", flush=True)
+    print(f"tv_username: {credentials.username}", flush=True)
+    print(f"tv_password: {credentials.password}", flush=True)
+    print("Then set mode to bridge and clear pair_pin.", flush=True)
+
+
 def log_option_presence(options: dict[str, Any]) -> None:
     mode = str(options.get("mode", "bridge"))
     keys = ", ".join(sorted(str(key) for key in options))
@@ -157,6 +252,7 @@ def log_option_presence(options: dict[str, Any]) -> None:
         f"tv_host={present(options.get('tv_host'))}, "
         f"tv_username={present(options.get('tv_username'))}, "
         f"tv_password={present(options.get('tv_password'))}, "
+        f"pair_pin={present(options.get('pair_pin'))}, "
         f"wled_host={present(options.get('wled_host'))}, "
         f"ddp_host={present(options.get('ddp_host'))}",
         flush=True,
@@ -181,6 +277,12 @@ def present(value: object) -> str:
     if str(value).strip() == "":
         return "blank"
     return "set"
+
+
+def optional_text(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
 def required(options: dict[str, Any], key: str) -> str:
