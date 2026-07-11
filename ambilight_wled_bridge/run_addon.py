@@ -13,10 +13,13 @@ BRIDGE_CONFIG_PATH = Path("/data/bridge-config.yaml")
 
 def main() -> None:
     options = load_options(OPTIONS_PATH)
-    if str(options.get("mode", "bridge")) == "pair":
+    mode = str(options.get("mode", "bridge"))
+    log_option_presence(options)
+    if mode == "pair":
         os.execvp("python3", build_pair_argv(options))
 
     config = build_bridge_config(options)
+    log_bridge_config_presence(config)
     BRIDGE_CONFIG_PATH.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     os.execvp("python3", build_cli_argv(options, BRIDGE_CONFIG_PATH))
 
@@ -143,6 +146,41 @@ def build_pair_argv(options: dict[str, Any]) -> list[str]:
         "--test",
     ]
     return argv
+
+
+def log_option_presence(options: dict[str, Any]) -> None:
+    mode = str(options.get("mode", "bridge"))
+    keys = ", ".join(sorted(str(key) for key in options))
+    print(f"Add-on mode: {mode}", flush=True)
+    print(
+        "Add-on option presence: "
+        f"tv_host={present(options.get('tv_host'))}, "
+        f"tv_username={present(options.get('tv_username'))}, "
+        f"tv_password={present(options.get('tv_password'))}, "
+        f"wled_host={present(options.get('wled_host'))}, "
+        f"ddp_host={present(options.get('ddp_host'))}",
+        flush=True,
+    )
+    print(f"Add-on option keys: {keys}", flush=True)
+
+
+def log_bridge_config_presence(config: dict[str, Any]) -> None:
+    print(
+        "Generated bridge config presence: "
+        f"tv.host={present(config.get('tv', {}).get('host'))}, "
+        f"wled.host={present(config.get('wled', {}).get('host'))}, "
+        f"ddp.host={present(config.get('ddp', {}).get('host'))}, "
+        f"output.backend={config.get('output', {}).get('backend')}",
+        flush=True,
+    )
+
+
+def present(value: object) -> str:
+    if value is None:
+        return "missing"
+    if str(value).strip() == "":
+        return "blank"
+    return "set"
 
 
 def required(options: dict[str, Any], key: str) -> str:
