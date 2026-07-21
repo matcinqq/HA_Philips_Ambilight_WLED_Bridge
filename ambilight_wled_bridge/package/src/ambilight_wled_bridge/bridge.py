@@ -46,6 +46,7 @@ class AmbilightBridge:
         self.mapper = AmbilightMapper(
             mapping=config.mapping,
             segment_ids=config.segment_ids,
+            color_profile=config.bridge.color_profile,
             brightness_multiplier=config.bridge.brightness_multiplier,
             red_gain=config.bridge.red_gain,
             green_gain=config.bridge.green_gain,

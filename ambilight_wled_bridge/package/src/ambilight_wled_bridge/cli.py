@@ -136,11 +136,18 @@ def build_parser() -> argparse.ArgumentParser:
     run.set_defaults(func=command_run)
 
     test_ddp = subparsers.add_parser("test-ddp", help="Send static DDP test patterns")
-    test_ddp.add_argument(
+    test_ddp_pattern = test_ddp.add_mutually_exclusive_group()
+    test_ddp_pattern.add_argument(
         "--pattern",
         choices=("all", "red", "green", "blue", "coral", "segments"),
         default="all",
         help="Pattern to send; defaults to cycling all patterns",
+    )
+    test_ddp_pattern.add_argument(
+        "--rgb",
+        type=_parse_rgb,
+        metavar="R,G,B",
+        help="Send one exact RGB color to every pixel, with channels from 0 to 255",
     )
     test_ddp.add_argument("--duration", type=float, default=1.0, help="Seconds to hold each pattern")
     test_ddp.add_argument("--skip-setup", action="store_true", help="Do not load/normalize the Ambilight preset first")
@@ -501,8 +508,14 @@ def command_test_ddp(args: argparse.Namespace, config: AppConfig) -> int:
     client = DDPClient(host, config.ddp.port)
     wled = WLEDClient(config.wled)
     render_interval = config.timing.wled_render_interval_ms / 1000.0
-    pattern_items = _ddp_test_patterns(config.ddp.pixel_count)
-    if args.pattern != "all":
+    if args.rgb is not None:
+        color = args.rgb
+        pattern_items = [
+            (f"RGB {color.r},{color.g},{color.b}", [color for _ in range(config.ddp.pixel_count)])
+        ]
+    else:
+        pattern_items = _ddp_test_patterns(config.ddp.pixel_count)
+    if args.rgb is None and args.pattern != "all":
         pattern_items = [(name, pixels) for name, pixels in pattern_items if name == args.pattern]
 
     try:
@@ -568,25 +581,26 @@ def _load_config_from_args(args: argparse.Namespace) -> AppConfig:
 
 def _mapper_from_config(config: AppConfig) -> AmbilightMapper:
     return AmbilightMapper(
-        config.mapping,
-        config.segment_ids,
-        config.bridge.brightness_multiplier,
-        config.bridge.red_gain,
-        config.bridge.green_gain,
-        config.bridge.blue_gain,
-        config.bridge.color_correction_matrix,
-        config.bridge.saturation,
-        config.bridge.white_mix,
-        config.bridge.white_mix_strategy,
-        config.bridge.white_extraction,
-        config.bridge.white_gain,
-        config.bridge.rgbw_tint_gain,
-        config.bridge.white_cool_blue_boost,
-        config.bridge.black_floor_white,
-        config.bridge.black_floor_white_level,
-        config.bridge.black_floor_threshold,
-        config.bridge.max_brightness,
-        config.wled.use_white_channel,
+        mapping=config.mapping,
+        segment_ids=config.segment_ids,
+        brightness_multiplier=config.bridge.brightness_multiplier,
+        red_gain=config.bridge.red_gain,
+        green_gain=config.bridge.green_gain,
+        blue_gain=config.bridge.blue_gain,
+        color_correction_matrix=config.bridge.color_correction_matrix,
+        saturation=config.bridge.saturation,
+        white_mix=config.bridge.white_mix,
+        white_mix_strategy=config.bridge.white_mix_strategy,
+        white_extraction=config.bridge.white_extraction,
+        white_gain=config.bridge.white_gain,
+        rgbw_tint_gain=config.bridge.rgbw_tint_gain,
+        white_cool_blue_boost=config.bridge.white_cool_blue_boost,
+        black_floor_white=config.bridge.black_floor_white,
+        black_floor_white_level=config.bridge.black_floor_white_level,
+        black_floor_threshold=config.bridge.black_floor_threshold,
+        max_brightness=config.bridge.max_brightness,
+        use_white_channel=config.wled.use_white_channel,
+        color_profile=config.bridge.color_profile,
     )
 
 
@@ -644,6 +658,7 @@ def _print_debug_frame(
             print(f"{name:19s} = {_format_color(color)}")
 
     traces = {segment_id: mapper.trace_color(color) for segment_id, color in raw_segments.items()}
+    _print_trace_stage("AFTER COLOR PROFILE", traces, "after_color_profile", include_white)
     _print_trace_stage("AFTER GAIN", traces, "after_matrix_gain_brightness", include_white)
     _print_trace_stage("AFTER SATURATION", traces, "after_saturation", include_white)
     _print_trace_stage("AFTER WHITE MIX", traces, "after_white_mix", include_white)
@@ -778,6 +793,21 @@ def _ddp_test_patterns(pixel_count: int) -> list[tuple[str, list[RGB]]]:
         ("coral", [RGB(254, 86, 64) for _ in range(pixel_count)]),
         ("segments", [pixel.as_rgb() for pixel in expand_segments_to_pixels(segment_colors, pixel_count)]),
     ]
+
+
+def _parse_rgb(value: str) -> RGB:
+    parts = value.split(",")
+    if len(parts) != 3:
+        raise argparse.ArgumentTypeError("RGB must contain exactly three comma-separated channels")
+
+    try:
+        channels = [int(part.strip()) for part in parts]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("RGB channels must be integers") from exc
+
+    if any(channel < 0 or channel > 255 for channel in channels):
+        raise argparse.ArgumentTypeError("RGB channels must be between 0 and 255")
+    return RGB(*channels)
 
 
 def _advance_deadline(deadline: float, interval: float, now: float) -> float:

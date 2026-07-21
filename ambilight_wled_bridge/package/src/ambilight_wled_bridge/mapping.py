@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .config import MappingConfig, SegmentIds, ZoneOrder
 from .models import ColorValue, FloatRGB, MappingError, RGB
+from .transforms import apply_philips_match_profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,9 +78,11 @@ class AmbilightMapper:
         black_floor_threshold: int = 8,
         max_brightness: int = 255,
         use_white_channel: bool = False,
+        color_profile: str = "raw",
     ) -> None:
         self.mapping = mapping or MappingConfig()
         self.segment_ids = segment_ids or SegmentIds()
+        self.color_profile = color_profile
         self.brightness_multiplier = brightness_multiplier
         self.red_gain = red_gain
         self.green_gain = green_gain
@@ -252,6 +255,12 @@ class AmbilightMapper:
     def trace_color(self, color: ColorValue) -> list[ColorStage]:
         current = FloatRGB.from_color(color)
         stages = [ColorStage("philips_raw", current)]
+
+        if self.color_profile == "philips_match":
+            current = apply_philips_match_profile(current)
+            stages.append(ColorStage("after_color_profile", current, "profile=philips_match"))
+        else:
+            stages.append(ColorStage("after_color_profile", current, "disabled"))
 
         current = current.apply_matrix_and_gains(
             self.color_correction_matrix,

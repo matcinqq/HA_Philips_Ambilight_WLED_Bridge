@@ -43,6 +43,7 @@ class WLEDConfig:
 @dataclass(frozen=True, slots=True)
 class BridgeConfig:
     update_interval_ms: int = 100
+    color_profile: str = "raw"
     brightness_multiplier: float = 1.0
     red_gain: float = 1.0
     green_gain: float = 1.0
@@ -181,6 +182,8 @@ class AppConfig:
 
         if self.bridge.update_interval_ms < 50:
             raise ConfigError("bridge.update_interval_ms must be at least 50 for WLED JSON API")
+        if self.bridge.color_profile not in {"raw", "philips_match"}:
+            raise ConfigError("bridge.color_profile must be 'raw' or 'philips_match'")
         if self.bridge.brightness_multiplier < 0:
             raise ConfigError("bridge.brightness_multiplier must not be negative")
         for gain_name, gain_value in (
